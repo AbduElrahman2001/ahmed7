@@ -563,11 +563,11 @@ function setupCarousel() {
         });
     });
     
-    // Auto-advance carousel every 1 second
+    // Auto-advance carousel every 5 seconds
     carouselInterval = setInterval(() => {
         currentSlide = (currentSlide + 1) % slides.length;
         updateCarousel();
-    }, 1000);
+    }, 5000);
     
     // Pause auto-advance on hover
     const carouselContainer = document.querySelector('.carousel-container');
@@ -580,7 +580,7 @@ function setupCarousel() {
             carouselInterval = setInterval(() => {
                 currentSlide = (currentSlide + 1) % slides.length;
                 updateCarousel();
-            }, 1000);
+            }, 5000);
         });
     }
 }
