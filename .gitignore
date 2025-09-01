@@ -12,9 +12,6 @@ yarn-error.log*
 .env.production.local
 config.env
 
-# Vercel
-.vercel
-
 # Logs
 logs
 *.log

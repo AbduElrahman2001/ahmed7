@@ -21,10 +21,10 @@ const app = express();
 app.use(helmet());
 app.use(compression());
 
-// CORS configuration for Vercel
+// CORS configuration
 app.use(cors({
     origin: process.env.NODE_ENV === 'production' 
-        ? ['https://your-vercel-domain.vercel.app', 'https://your-custom-domain.com'] 
+        ? ['https://your-domain.com'] 
         : ['http://localhost:3000', 'http://127.0.0.1:3000'],
     credentials: true
 }));
@@ -58,8 +58,7 @@ app.get('/api/health', (req, res) => {
         status: 'success',
         message: 'BALHA Barbershop API is running',
         timestamp: new Date().toISOString(),
-        environment: process.env.NODE_ENV,
-        platform: 'Vercel'
+        environment: process.env.NODE_ENV
     });
 });
 
@@ -90,10 +89,7 @@ const connectDB = async () => {
         
     } catch (error) {
         console.error('❌ MongoDB connection error:', error.message);
-        // Don't exit process on Vercel, just log the error
-        if (process.env.NODE_ENV !== 'production') {
-            process.exit(1);
-        }
+        process.exit(1);
     }
 };
 
@@ -127,37 +123,31 @@ const initializeDefaultAdmin = async () => {
     }
 };
 
-// Connect to MongoDB on app initialization
-connectDB();
-
-// Start server only if not on Vercel
-if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
-    const PORT = process.env.PORT || 3000;
+// Start server
+const PORT = process.env.PORT || 3000;
+const startServer = async () => {
+    await connectDB();
+    
     app.listen(PORT, () => {
         console.log(`🚀 Server running on port ${PORT}`);
         console.log(`📱 Environment: ${process.env.NODE_ENV}`);
         console.log(`🌐 API URL: http://localhost:${PORT}/api`);
         console.log(`🎨 Frontend: http://localhost:${PORT}`);
     });
-}
+};
+
+startServer();
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err, promise) => {
     console.error('❌ Unhandled Promise Rejection:', err.message);
-    // Don't exit on Vercel
-    if (process.env.NODE_ENV !== 'production') {
-        process.exit(1);
-    }
+    // Close server & exit process
+    process.exit(1);
 });
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (err) => {
     console.error('❌ Uncaught Exception:', err.message);
-    // Don't exit on Vercel
-    if (process.env.NODE_ENV !== 'production') {
-        process.exit(1);
-    }
+    // Close server & exit process
+    process.exit(1);
 });
-
-// Export for Vercel
-module.exports = app;
