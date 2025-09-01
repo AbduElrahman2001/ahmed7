@@ -67,8 +67,7 @@ function setupEventListeners() {
     checkTurnStatusBtn.addEventListener('click', checkTurnStatus);
     cancelTurnBtn.addEventListener('click', cancelTurn);
     
-    // Carousel functionality
-    setupCarousel();
+
 }
 
 // Modal functions
@@ -95,15 +94,27 @@ async function apiRequest(endpoint, options = {}) {
 
     try {
         const response = await fetch(url, config);
+        
+        // Check if response is JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            console.error('Non-JSON response:', text);
+            throw new Error('الخادم غير متاح حالياً. يرجى المحاولة مرة أخرى لاحقاً.');
+        }
+        
         const data = await response.json();
 
         if (!response.ok) {
-            throw new Error(data.error?.message || 'خطأ في الاتصال بالخادم');
+            throw new Error(data.error?.message || data.message || 'خطأ في الاتصال بالخادم');
         }
 
         return data;
     } catch (error) {
         console.error('API Error:', error);
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            throw new Error('لا يمكن الاتصال بالخادم. تحقق من اتصال الإنترنت.');
+        }
         throw error;
     }
 }
@@ -530,81 +541,5 @@ window.addEventListener('load', function() {
     }
 });
 
-// Carousel functionality
-let currentSlide = 0;
-let carouselInterval;
 
-function setupCarousel() {
-    const slides = document.querySelectorAll('.carousel-slide');
-    const indicators = document.querySelectorAll('.indicator');
-    const prevBtn = document.getElementById('carouselPrev');
-    const nextBtn = document.getElementById('carouselNext');
-    
-    // Add event listeners for navigation buttons
-    if (prevBtn) {
-        prevBtn.addEventListener('click', () => {
-            currentSlide = (currentSlide - 1 + slides.length) % slides.length;
-            updateCarousel();
-        });
-    }
-    
-    if (nextBtn) {
-        nextBtn.addEventListener('click', () => {
-            currentSlide = (currentSlide + 1) % slides.length;
-            updateCarousel();
-        });
-    }
-    
-    // Add event listeners for indicators
-    indicators.forEach((indicator, index) => {
-        indicator.addEventListener('click', () => {
-            currentSlide = index;
-            updateCarousel();
-        });
-    });
-    
-    // Auto-advance carousel every 5 seconds
-    carouselInterval = setInterval(() => {
-        currentSlide = (currentSlide + 1) % slides.length;
-        updateCarousel();
-    }, 5000);
-    
-    // Pause auto-advance on hover
-    const carouselContainer = document.querySelector('.carousel-container');
-    if (carouselContainer) {
-        carouselContainer.addEventListener('mouseenter', () => {
-            clearInterval(carouselInterval);
-        });
-        
-        carouselContainer.addEventListener('mouseleave', () => {
-            carouselInterval = setInterval(() => {
-                currentSlide = (currentSlide + 1) % slides.length;
-                updateCarousel();
-            }, 5000);
-        });
-    }
-}
-
-function updateCarousel() {
-    const slides = document.querySelectorAll('.carousel-slide');
-    const indicators = document.querySelectorAll('.indicator');
-    
-    // Update slides
-    slides.forEach((slide, index) => {
-        if (index === currentSlide) {
-            slide.classList.add('active');
-        } else {
-            slide.classList.remove('active');
-        }
-    });
-    
-    // Update indicators
-    indicators.forEach((indicator, index) => {
-        if (index === currentSlide) {
-            indicator.classList.add('active');
-        } else {
-            indicator.classList.remove('active');
-        }
-    });
-}
 

@@ -5,15 +5,14 @@ const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
-require('dotenv').config({ path: './config.env' });
 
 // Import routes
-const authRoutes = require('./routes/auth');
-const turnRoutes = require('./routes/turns');
-const adminRoutes = require('./routes/admin');
+const authRoutes = require('../routes/auth');
+const turnRoutes = require('../routes/turns');
+const adminRoutes = require('../routes/admin');
 
 // Import middleware
-const { errorHandler } = require('./middleware/errorHandler');
+const { errorHandler } = require('../middleware/errorHandler');
 
 const app = express();
 
@@ -23,16 +22,14 @@ app.use(compression());
 
 // CORS configuration
 app.use(cors({
-    origin: process.env.NODE_ENV === 'production' 
-        ? true // Allow all origins in production for Vercel
-        : ['http://localhost:3000', 'http://127.0.0.1:3000'],
+    origin: true, // Allow all origins for Vercel
     credentials: true
 }));
 
 // Rate limiting
 const limiter = rateLimit({
-    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-    max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100, // limit each IP to 100 requests per windowMs
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // limit each IP to 100 requests per windowMs
     message: {
         error: 'تم تجاوز الحد الأقصى للطلبات. يرجى المحاولة مرة أخرى لاحقاً.',
         ar: 'تم تجاوز الحد الأقصى للطلبات. يرجى المحاولة مرة أخرى لاحقاً.'
@@ -43,9 +40,6 @@ app.use('/api/', limiter);
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-// Serve static files
-app.use(express.static(path.join(__dirname, 'public')));
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -58,13 +52,8 @@ app.get('/api/health', (req, res) => {
         status: 'success',
         message: 'BALHA Barbershop API is running',
         timestamp: new Date().toISOString(),
-        environment: process.env.NODE_ENV
+        environment: process.env.NODE_ENV || 'production'
     });
-});
-
-// Serve the main HTML file for all non-API routes
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Error handling middleware
@@ -73,10 +62,12 @@ app.use(errorHandler);
 // MongoDB connection
 const connectDB = async () => {
     try {
-        const mongoURI = process.env.NODE_ENV === 'production' 
-            ? process.env.MONGODB_URI_PROD 
-            : process.env.MONGODB_URI;
-            
+        const mongoURI = process.env.MONGODB_URI_PROD || process.env.MONGODB_URI;
+        
+        if (!mongoURI) {
+            throw new Error('MongoDB URI not found in environment variables');
+        }
+        
         await mongoose.connect(mongoURI, {
             useNewUrlParser: true,
             useUnifiedTopology: true,
@@ -89,14 +80,14 @@ const connectDB = async () => {
         
     } catch (error) {
         console.error('❌ MongoDB connection error:', error.message);
-        process.exit(1);
+        throw error;
     }
 };
 
 // Initialize default admin user
 const initializeDefaultAdmin = async () => {
     try {
-        const User = require('./models/User');
+        const User = require('../models/User');
         const bcrypt = require('bcryptjs');
         
         const adminExists = await User.findOne({ 
@@ -106,7 +97,7 @@ const initializeDefaultAdmin = async () => {
         if (!adminExists) {
             const hashedPassword = await bcrypt.hash(
                 process.env.DEFAULT_ADMIN_PASSWORD || 'admin123', 
-                parseInt(process.env.BCRYPT_ROUNDS) || 12
+                12
             );
             
             await User.create({
@@ -123,31 +114,17 @@ const initializeDefaultAdmin = async () => {
     }
 };
 
-// Start server
-const PORT = process.env.PORT || 3000;
-const startServer = async () => {
-    await connectDB();
-    
-    app.listen(PORT, () => {
-        console.log(`🚀 Server running on port ${PORT}`);
-        console.log(`📱 Environment: ${process.env.NODE_ENV}`);
-        console.log(`🌐 API URL: http://localhost:${PORT}/api`);
-        console.log(`🎨 Frontend: http://localhost:${PORT}`);
-    });
+// Initialize database connection
+let isConnected = false;
+const initDB = async () => {
+    if (!isConnected) {
+        await connectDB();
+        isConnected = true;
+    }
 };
 
-startServer();
-
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (err, promise) => {
-    console.error('❌ Unhandled Promise Rejection:', err.message);
-    // Close server & exit process
-    process.exit(1);
-});
-
-// Handle uncaught exceptions
-process.on('uncaughtException', (err) => {
-    console.error('❌ Uncaught Exception:', err.message);
-    // Close server & exit process
-    process.exit(1);
-});
+// Export the app for Vercel
+module.exports = async (req, res) => {
+    await initDB();
+    return app(req, res);
+};

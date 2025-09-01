@@ -49,9 +49,10 @@ body {
 }
 
 .logo-img {
-    height: 50px;
+    height: 80px;
     width: auto;
-    border-radius: 8px;
+    border-radius: 12px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .subtitle {
@@ -129,6 +130,20 @@ body {
     font-family: 'Noto Sans Arabic', sans-serif;
 }
 
+.hero-logo {
+    height: 120px;
+    width: auto;
+    margin-bottom: 2rem;
+    border-radius: 15px;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+    animation: logoFloat 3s ease-in-out infinite;
+}
+
+@keyframes logoFloat {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+}
+
 .hero-content p {
     font-size: 1.3rem;
     margin-bottom: 2rem;
@@ -136,195 +151,85 @@ body {
     font-family: 'Noto Sans Arabic', sans-serif;
 }
 
-/* Carousel Section */
-.carousel-section {
-    padding: 3rem 0;
+/* Gallery Cards Section */
+.gallery-cards {
+    padding: 4rem 2rem;
     background: #f8f9fa;
 }
 
-.carousel-container {
+.gallery-cards .section-header p {
+    font-size: 1.1rem;
+    color: #7f8c8d;
+    margin-top: 0.5rem;
+    font-family: 'Noto Sans Arabic', sans-serif;
+}
+
+.gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
     max-width: 1200px;
     margin: 0 auto;
-    position: relative;
-    overflow: hidden;
+}
+
+.gallery-card {
+    background: white;
     border-radius: 15px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    cursor: pointer;
 }
 
-.carousel-wrapper {
-    display: flex;
-    transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-    height: 700px;
+.gallery-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+}
+
+.card-image {
     position: relative;
+    height: 500px;
+    overflow: hidden;
 }
 
-.carousel-slide {
-    min-width: 100%;
-    position: relative;
-    opacity: 0;
-    transition: opacity 0.8s ease-in-out;
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-}
-
-.carousel-slide.active {
-    opacity: 1;
-    z-index: 1;
-}
-
-@keyframes slideIn {
-    from {
-        opacity: 0;
-        transform: scale(1.1);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
-}
-
-.carousel-slide img {
+.card-image img {
     width: 100%;
     height: 100%;
     object-fit: cover;
     object-position: center;
-    border-radius: 20px;
-    filter: brightness(0.9) contrast(1.1);
-    transition: filter 0.3s ease;
+    transition: transform 0.3s ease;
 }
 
-.carousel-slide:hover img {
-    filter: brightness(1) contrast(1.2);
+.gallery-card:hover .card-image img {
+    transform: scale(1.1);
 }
 
-/* Different object-fit options for different screen sizes */
-@media (max-width: 768px) {
-    .carousel-slide img {
-        object-fit: cover;
-        object-position: center 30%;
-    }
-}
-
-@media (max-width: 480px) {
-    .carousel-slide img {
-        object-fit: cover;
-        object-position: center 25%;
-    }
-}
-
-.carousel-caption {
+.card-overlay {
     position: absolute;
     bottom: 0;
     left: 0;
     right: 0;
     background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
     color: white;
-    padding: 2rem;
-    text-align: center;
+    padding: 2rem 1.5rem 1.5rem;
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
 }
 
-.carousel-caption h3 {
-    font-size: 2rem;
+.gallery-card:hover .card-overlay {
+    transform: translateY(0);
+}
+
+.card-overlay h3 {
+    font-size: 1.3rem;
     margin-bottom: 0.5rem;
     font-family: 'Noto Sans Arabic', sans-serif;
 }
 
-.carousel-caption p {
-    font-size: 1.1rem;
+.card-overlay p {
+    font-size: 0.9rem;
     opacity: 0.9;
     font-family: 'Noto Sans Arabic', sans-serif;
-}
-
-@keyframes slideUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* Carousel Navigation Buttons */
-.carousel-btn {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    background: rgba(255, 255, 255, 0.9);
-    border: none;
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.2rem;
-    color: #333;
-    transition: all 0.3s ease;
-    z-index: 10;
-}
-
-.carousel-btn:hover {
-    background: rgba(255, 255, 255, 1);
-    transform: translateY(-50%) scale(1.1);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-}
-
-.carousel-prev {
-    right: 20px;
-}
-
-.carousel-next {
-    left: 20px;
-}
-
-/* Carousel Progress Bar */
-.carousel-progress {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: rgba(255, 255, 255, 0.3);
-    z-index: 15;
-}
-
-.carousel-progress-bar {
-    height: 100%;
-    background: linear-gradient(90deg, #e74c3c, #f39c12);
-    width: 0%;
-    transition: width 0.1s linear;
-    border-radius: 0 0 2px 0;
-}
-
-/* Carousel Indicators */
-.carousel-indicators {
-    position: absolute;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    gap: 10px;
-    z-index: 10;
-}
-
-.indicator {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.5);
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.indicator.active {
-    background: rgba(255, 255, 255, 1);
-    transform: scale(1.2);
 }
 
 
@@ -634,10 +539,21 @@ body {
     background: white;
 }
 
-.services h2 {
+.section-header {
     text-align: center;
-    font-size: 2.5rem;
     margin-bottom: 3rem;
+}
+
+.section-logo {
+    height: 160px;
+    width: auto;
+    margin-bottom: 1rem;
+    border-radius: 12px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.services h2 {
+    font-size: 2.5rem;
     color: #2c3e50;
     font-family: 'Noto Sans Arabic', sans-serif;
 }
@@ -688,6 +604,19 @@ body {
     text-align: center;
 }
 
+.about-content {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.about-logo {
+    height: 100px;
+    width: auto;
+    margin-bottom: 2rem;
+    border-radius: 15px;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+
 .about h2 {
     font-size: 2.5rem;
     margin-bottom: 1.5rem;
@@ -696,8 +625,6 @@ body {
 
 .about p {
     font-size: 1.2rem;
-    max-width: 800px;
-    margin: 0 auto;
     opacity: 0.9;
     font-family: 'Noto Sans Arabic', sans-serif;
 }
@@ -811,7 +738,11 @@ body {
     }
     
     .logo-img {
-        height: 40px;
+        height: 60px;
+    }
+    
+    .hero-logo {
+        height: 80px;
     }
     
     .hero-content h2 {
@@ -820,6 +751,23 @@ body {
     
     .hero-content p {
         font-size: 1.1rem;
+    }
+    
+    .section-logo {
+        height: 120px;
+    }
+    
+    .about-logo {
+        height: 80px;
+    }
+    
+    .gallery-grid {
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1.5rem;
+    }
+    
+    .card-image {
+        height: 400px;
     }
     
     .modal-content {
@@ -895,11 +843,44 @@ body {
 
 @media (max-width: 480px) {
     .logo-img {
-        height: 35px;
+        height: 50px;
+    }
+    
+    .hero-logo {
+        height: 60px;
     }
     
     .hero-content h2 {
         font-size: 2rem;
+    }
+    
+    .section-logo {
+        height: 100px;
+    }
+    
+    .about-logo {
+        height: 60px;
+    }
+    
+    .gallery-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .card-image {
+        height: 360px;
+    }
+    
+    .card-overlay {
+        padding: 1.5rem 1rem 1rem;
+    }
+    
+    .card-overlay h3 {
+        font-size: 1.1rem;
+    }
+    
+    .card-overlay p {
+        font-size: 0.8rem;
     }
     
     .btn {
