@@ -88,21 +88,15 @@ const connectDB = async () => {
 const initializeDefaultAdmin = async () => {
     try {
         const User = require('../models/User');
-        const bcrypt = require('bcryptjs');
         
         const adminExists = await User.findOne({ 
             username: process.env.DEFAULT_ADMIN_USERNAME || 'admin' 
         });
         
         if (!adminExists) {
-            const hashedPassword = await bcrypt.hash(
-                process.env.DEFAULT_ADMIN_PASSWORD || 'admin123', 
-                12
-            );
-            
             await User.create({
                 username: process.env.DEFAULT_ADMIN_USERNAME || 'admin',
-                password: hashedPassword,
+                password: process.env.DEFAULT_ADMIN_PASSWORD || 'admin123',
                 type: 'admin',
                 isActive: true
             });
