@@ -61,6 +61,9 @@ router.get('/turns', async (req, res) => {
                     cancelledBy: turn.cancelledBy,
                     waitTimeMinutes: turn.waitTimeMinutes,
                     formattedWaitTime: turn.formattedWaitTime,
+                    smsSent: turn.smsSent,
+                    smsSentAt: turn.smsSentAt,
+                    smsMessage: turn.smsMessage
                 })),
                 pagination: {
                     currentPage: parseInt(page),
@@ -231,6 +234,88 @@ router.put('/turns/:id/cancel', async (req, res) => {
     }
 });
 
+// @desc    Send SMS notification
+// @route   POST /api/admin/turns/:id/sms
+// @access  Private (Admin only)
+router.post('/turns/:id/sms', [
+    body('message')
+        .trim()
+        .isLength({ min: 1, max: 160 })
+        .withMessage('الرسالة يجب أن تكون بين 1 و 160 حرف'),
+    body('adminPhone')
+        .trim()
+        .isLength({ min: 8, max: 15 })
+        .withMessage('رقم جوال المدير يجب أن يكون بين 8 و 15 رقم')
+        .matches(/^[0-9+\-\s()]+$/)
+        .withMessage('رقم جوال المدير غير صحيح')
+], async (req, res) => {
+    try {
+        // Check for validation errors
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({
+                success: false,
+                error: {
+                    message: errors.array()[0].msg,
+                    statusCode: 400
+                }
+            });
+        }
+
+        const turn = await Turn.findById(req.params.id);
+        const { message, adminPhone } = req.body;
+
+        if (!turn) {
+            return res.status(404).json({
+                success: false,
+                error: {
+                    message: 'الدور غير موجود',
+                    statusCode: 404
+                }
+            });
+        }
+
+        if (turn.status !== 'waiting') {
+            return res.status(400).json({
+                success: false,
+                error: {
+                    message: 'لا يمكن إرسال رسالة لدور غير منتظر',
+                    statusCode: 400
+                }
+            });
+        }
+
+        // Mark SMS as sent
+        await turn.markSmsSent(message);
+
+        // In a real application, you would integrate with an SMS service here
+        // For now, we'll just simulate the SMS sending
+        console.log(`SMS sent to ${turn.mobileNumber} from ${adminPhone}: "${message}"`);
+
+        res.status(200).json({
+            success: true,
+            data: {
+                sms: {
+                    to: turn.mobileNumber,
+                    from: adminPhone,
+                    message: message,
+                    sentAt: turn.smsSentAt
+                }
+            },
+            message: `تم إرسال الرسالة النصية إلى ${turn.customerName} بنجاح`
+        });
+
+    } catch (error) {
+        console.error('Send SMS error:', error);
+        res.status(500).json({
+            success: false,
+            error: {
+                message: 'خطأ في الخادم',
+                statusCode: 500
+            }
+        });
+    }
+});
 
 // @desc    Get dashboard statistics
 // @route   GET /api/admin/dashboard
@@ -328,7 +413,9 @@ router.get('/turns/:id', async (req, res) => {
                     cancelledBy: turn.cancelledBy,
                     waitTimeMinutes: turn.waitTimeMinutes,
                     formattedWaitTime: turn.formattedWaitTime,
-,
+                    smsSent: turn.smsSent,
+                    smsSentAt: turn.smsSentAt,
+                    smsMessage: turn.smsMessage,
                     notes: turn.notes
                 }
             }

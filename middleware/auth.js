@@ -49,6 +49,17 @@ const protect = async (req, res, next) => {
             });
         }
 
+        // Check if account is locked
+        if (user.isLocked) {
+            return res.status(401).json({
+                success: false,
+                error: {
+                    message: 'الحساب مقفل مؤقتاً. يرجى المحاولة مرة أخرى لاحقاً',
+                    statusCode: 401
+                }
+            });
+        }
+
         req.user = user;
         next();
     } catch (error) {
@@ -91,7 +102,7 @@ const optionalAuth = async (req, res, next) => {
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
             const user = await User.findById(decoded.id);
 
-            if (user && user.isActive) {
+            if (user && user.isActive && !user.isLocked) {
                 req.user = user;
             }
         } catch (error) {
