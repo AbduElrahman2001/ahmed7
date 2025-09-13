@@ -66,10 +66,24 @@ router.post('/login', [
             });
         }
 
+        // Check if account is locked
+        if (user.isLocked) {
+            return res.status(401).json({
+                success: false,
+                error: {
+                    message: 'الحساب مقفل مؤقتاً. يرجى المحاولة مرة أخرى لاحقاً',
+                    statusCode: 401
+                }
+            });
+        }
+
         // Check if password matches
         const isMatch = await user.comparePassword(password);
 
         if (!isMatch) {
+            // Increment login attempts
+            await user.incLoginAttempts();
+            
             return res.status(401).json({
                 success: false,
                 error: {
@@ -79,8 +93,8 @@ router.post('/login', [
             });
         }
 
-        // Update last login
-        await user.updateLastLogin();
+        // Reset login attempts on successful login
+        await user.resetLoginAttempts();
 
         // Generate token
         const token = generateToken(user._id);
