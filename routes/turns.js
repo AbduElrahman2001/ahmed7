@@ -103,17 +103,17 @@ router.get('/customer/:mobileNumber', async (req, res) => {
     try {
         const { mobileNumber } = req.params;
 
-        // Find active turn for this mobile number
+        // Find turn for this mobile number (including cancelled/completed)
         const turn = await Turn.findOne({
             mobileNumber,
-            status: { $in: ['waiting', 'confirmed'] }
-        });
+            status: { $in: ['waiting', 'confirmed', 'completed', 'cancelled'] }
+        }).sort({ createdAt: -1 }); // Get the most recent turn
 
         if (!turn) {
             return res.status(404).json({
                 success: false,
                 error: {
-                    message: 'لم يتم العثور على دور نشط لهذا الرقم',
+                    message: 'لم يتم العثور على دور لهذا الرقم',
                     statusCode: 404
                 }
             });
@@ -132,6 +132,9 @@ router.get('/customer/:mobileNumber', async (req, res) => {
                     status: turn.status,
                     statusNameArabic: turn.statusNameArabic,
                     createdAt: turn.createdAt,
+                    completedAt: turn.completedAt,
+                    cancelledAt: turn.cancelledAt,
+                    cancelledBy: turn.cancelledBy,
                     waitTimeMinutes: turn.waitTimeMinutes,
                     formattedWaitTime: turn.formattedWaitTime
                 }

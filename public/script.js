@@ -226,23 +226,26 @@ async function checkForExistingTurn() {
         currentCustomerTurn = JSON.parse(savedTurn);
         
         try {
-            // Verify turn still exists and is active
+            // Verify turn still exists and get updated info
             const response = await apiRequest(`/turns/customer/${currentCustomerTurn.mobileNumber}`);
             const activeTurn = response.data.turn;
             
-            if (activeTurn && activeTurn.status === 'waiting') {
+            if (activeTurn) {
+                // Update the turn with latest info (including updated turn number)
                 currentCustomerTurn = activeTurn;
                 localStorage.setItem('currentCustomerTurn', JSON.stringify(activeTurn));
                 showCustomerTurnStatus(activeTurn);
-        } else {
-            // Turn completed or cancelled, remove from localStorage
+            } else {
+                // Turn not found, remove from localStorage and hide status
                 localStorage.removeItem('currentCustomerTurn');
                 currentCustomerTurn = null;
+                customerTurnStatus.style.display = 'none';
             }
         } catch (error) {
-            // Turn not found, remove from localStorage
+            // Turn not found, remove from localStorage and hide status
             localStorage.removeItem('currentCustomerTurn');
             currentCustomerTurn = null;
+            customerTurnStatus.style.display = 'none';
         }
     }
 }
@@ -255,20 +258,31 @@ async function checkTurnStatus() {
         const response = await apiRequest(`/turns/customer/${currentCustomerTurn.mobileNumber}`);
         const activeTurn = response.data.turn;
         
-        currentCustomerTurn = activeTurn;
-        showCustomerTurnStatus(activeTurn);
-        
-        if (activeTurn.status === 'waiting') {
-            showToast('دورك لا يزال في الانتظار', 'success');
-        } else if (activeTurn.status === 'completed') {
-            showToast('تم إكمال دورك! شكراً لك', 'success');
-            // Remove completed turn from localStorage
+        if (activeTurn) {
+            // Update the turn with latest info (including updated turn number)
+            currentCustomerTurn = activeTurn;
+            localStorage.setItem('currentCustomerTurn', JSON.stringify(activeTurn));
+            showCustomerTurnStatus(activeTurn);
+            
+            if (activeTurn.status === 'waiting') {
+                showToast('دورك لا يزال في الانتظار', 'success');
+            } else if (activeTurn.status === 'completed') {
+                showToast('تم إكمال دورك! شكراً لك', 'success');
+            } else if (activeTurn.status === 'cancelled') {
+                showToast('تم إلغاء دورك', 'info');
+            }
+        } else {
+            showToast('لم يتم العثور على دورك', 'error');
             localStorage.removeItem('currentCustomerTurn');
             currentCustomerTurn = null;
             customerTurnStatus.style.display = 'none';
         }
     } catch (error) {
-        showToast('لم يتم العثور على دورك', 'error');
+        console.error('Check turn status error:', error);
+        showToast(error.message || 'لم يتم العثور على دورك', 'error');
+        localStorage.removeItem('currentCustomerTurn');
+        currentCustomerTurn = null;
+        customerTurnStatus.style.display = 'none';
     }
 }
 
@@ -278,18 +292,19 @@ async function cancelTurn() {
     
     if (confirm('هل أنت متأكد من إلغاء دورك؟')) {
         try {
-            await apiRequest(`/turns/cancel/${currentCustomerTurn.mobileNumber}`, {
+            const response = await apiRequest(`/turns/cancel/${currentCustomerTurn.mobileNumber}`, {
                 method: 'PUT'
             });
             
-            // Remove from localStorage
-            localStorage.removeItem('currentCustomerTurn');
-            currentCustomerTurn = null;
+            // Update the turn status to cancelled
+            currentCustomerTurn.status = 'cancelled';
+            currentCustomerTurn.statusNameArabic = 'ملغي';
+            localStorage.setItem('currentCustomerTurn', JSON.stringify(currentCustomerTurn));
             
-            // Hide the status section
-            customerTurnStatus.style.display = 'none';
+            // Update the display to show cancelled status
+            showCustomerTurnStatus(currentCustomerTurn);
             
-            showToast('تم إلغاء دورك بنجاح', 'success');
+            showToast(response.message || 'تم إلغاء دورك بنجاح', 'success');
         } catch (error) {
             showToast(error.message, 'error');
         }
@@ -334,6 +349,9 @@ async function loadTurns() {
                     <button class="btn btn-secondary btn-small complete-btn" data-turn-id="${turn.id}">
                     <i class="fas fa-check"></i> إكمال
                 </button>
+                    <button class="btn btn-danger btn-small cancel-btn" data-turn-id="${turn.id}" data-customer="${turn.customerName}">
+                    <i class="fas fa-times"></i> إلغاء
+                </button>
             </div>
         `;
         turnsList.appendChild(turnItem);
@@ -351,6 +369,11 @@ async function loadTurns() {
             const btn = e.target.closest('.complete-btn');
             const turnId = btn.dataset.turnId;
             completeTurn(turnId);
+        } else if (e.target.closest('.cancel-btn')) {
+            const btn = e.target.closest('.cancel-btn');
+            const turnId = btn.dataset.turnId;
+            const customerName = btn.dataset.customer;
+            cancelTurnAdmin(turnId, customerName);
         }
     });
     } catch (error) {
@@ -439,13 +462,15 @@ async function completeTurn(turnId) {
             method: 'PUT'
         });
         
-        // If this is the current customer's turn, update the display
+        // If this is the current customer's turn, update their status
         if (currentCustomerTurn && currentCustomerTurn.id === turnId) {
             currentCustomerTurn.status = 'completed';
+            localStorage.setItem('currentCustomerTurn', JSON.stringify(currentCustomerTurn));
             showCustomerTurnStatus(currentCustomerTurn);
+            showToast('تم إكمال دورك! شكراً لك', 'success');
         }
         
-        // Reload turns display
+        // Reload turns display to show updated turn numbers
         loadTurns();
         loadCustomers();
         
@@ -466,6 +491,32 @@ async function callNow(customerName, mobileNumber, turnId) {
             // Initiate the phone call
             const phoneNumber = mobileNumber.startsWith('+') ? mobileNumber : `+966${mobileNumber.replace(/^0/, '')}`;
             window.location.href = `tel:${phoneNumber}`;
+            
+            showToast(response.message, 'success');
+        } catch (error) {
+            showToast(error.message, 'error');
+        }
+    }
+}
+
+async function cancelTurnAdmin(turnId, customerName) {
+    if (confirm(`هل أنت متأكد من إلغاء دور ${customerName}؟`)) {
+        try {
+            const response = await apiRequest(`/admin/turns/${turnId}/cancel`, {
+                method: 'PUT'
+            });
+            
+            // If this is the current customer's turn, update their status
+            if (currentCustomerTurn && currentCustomerTurn.id === turnId) {
+                currentCustomerTurn.status = 'cancelled';
+                currentCustomerTurn.statusNameArabic = 'ملغي';
+                localStorage.setItem('currentCustomerTurn', JSON.stringify(currentCustomerTurn));
+                showCustomerTurnStatus(currentCustomerTurn);
+            }
+            
+            // Reload turns display to show updated turn numbers
+            loadTurns();
+            loadCustomers();
             
             showToast(response.message, 'success');
         } catch (error) {
