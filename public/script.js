@@ -99,7 +99,6 @@ async function apiRequest(endpoint, options = {}) {
         const contentType = response.headers.get('content-type');
         if (!contentType || !contentType.includes('application/json')) {
             const text = await response.text();
-            console.error('Non-JSON response:', text);
             throw new Error('الخادم غير متاح حالياً. يرجى المحاولة مرة أخرى لاحقاً.');
         }
         
@@ -111,7 +110,6 @@ async function apiRequest(endpoint, options = {}) {
 
         return data;
     } catch (error) {
-        console.error('API Error:', error);
         if (error.name === 'TypeError' && error.message.includes('fetch')) {
             throw new Error('لا يمكن الاتصال بالخادم. تحقق من اتصال الإنترنت.');
         }
@@ -223,26 +221,26 @@ function showCustomerTurnStatus(turn) {
 async function checkForExistingTurn() {
     const savedTurn = localStorage.getItem('currentCustomerTurn');
     if (savedTurn) {
-        currentCustomerTurn = JSON.parse(savedTurn);
-        
         try {
-            // Verify turn still exists and get updated info
+            currentCustomerTurn = JSON.parse(savedTurn);
+            
+            // Fetch the latest turn data from server
             const response = await apiRequest(`/turns/customer/${currentCustomerTurn.mobileNumber}`);
             const activeTurn = response.data.turn;
             
             if (activeTurn) {
-                // Update the turn with latest info (including updated turn number)
+                // Update with latest data from server
                 currentCustomerTurn = activeTurn;
                 localStorage.setItem('currentCustomerTurn', JSON.stringify(activeTurn));
                 showCustomerTurnStatus(activeTurn);
             } else {
-                // Turn not found, remove from localStorage and hide status
+                // Turn not found, clear localStorage
                 localStorage.removeItem('currentCustomerTurn');
                 currentCustomerTurn = null;
                 customerTurnStatus.style.display = 'none';
             }
         } catch (error) {
-            // Turn not found, remove from localStorage and hide status
+            // Error fetching turn, clear localStorage
             localStorage.removeItem('currentCustomerTurn');
             currentCustomerTurn = null;
             customerTurnStatus.style.display = 'none';
@@ -252,18 +250,22 @@ async function checkForExistingTurn() {
 
 // Check turn status
 async function checkTurnStatus() {
-    if (!currentCustomerTurn) return;
+    if (!currentCustomerTurn) {
+        showToast('لا يوجد دور للتحقق من حالته', 'error');
+        return;
+    }
     
     try {
         const response = await apiRequest(`/turns/customer/${currentCustomerTurn.mobileNumber}`);
         const activeTurn = response.data.turn;
         
         if (activeTurn) {
-            // Update the turn with latest info (including updated turn number)
+            // Update with latest data from server
             currentCustomerTurn = activeTurn;
             localStorage.setItem('currentCustomerTurn', JSON.stringify(activeTurn));
             showCustomerTurnStatus(activeTurn);
             
+            // Show appropriate status message
             if (activeTurn.status === 'waiting') {
                 showToast('دورك لا يزال في الانتظار', 'success');
             } else if (activeTurn.status === 'completed') {
@@ -278,8 +280,7 @@ async function checkTurnStatus() {
             customerTurnStatus.style.display = 'none';
         }
     } catch (error) {
-        console.error('Check turn status error:', error);
-        showToast(error.message || 'لم يتم العثور على دورك', 'error');
+        showToast(error.message || 'حدث خطأ أثناء التحقق من حالة الدور', 'error');
         localStorage.removeItem('currentCustomerTurn');
         currentCustomerTurn = null;
         customerTurnStatus.style.display = 'none';
@@ -288,7 +289,10 @@ async function checkTurnStatus() {
 
 // Cancel turn
 async function cancelTurn() {
-    if (!currentCustomerTurn) return;
+    if (!currentCustomerTurn) {
+        showToast('لا يوجد دور للإلغاء', 'error');
+        return;
+    }
     
     if (confirm('هل أنت متأكد من إلغاء دورك؟')) {
         try {
@@ -299,6 +303,10 @@ async function cancelTurn() {
             // Update the turn status to cancelled
             currentCustomerTurn.status = 'cancelled';
             currentCustomerTurn.statusNameArabic = 'ملغي';
+            currentCustomerTurn.cancelledAt = new Date().toISOString();
+            currentCustomerTurn.cancelledBy = 'customer';
+            
+            // Save updated turn to localStorage
             localStorage.setItem('currentCustomerTurn', JSON.stringify(currentCustomerTurn));
             
             // Update the display to show cancelled status
@@ -306,7 +314,7 @@ async function cancelTurn() {
             
             showToast(response.message || 'تم إلغاء دورك بنجاح', 'success');
         } catch (error) {
-            showToast(error.message, 'error');
+            showToast(error.message || 'حدث خطأ أثناء إلغاء الدور', 'error');
         }
     }
 }
@@ -465,6 +473,8 @@ async function completeTurn(turnId) {
         // If this is the current customer's turn, update their status
         if (currentCustomerTurn && currentCustomerTurn.id === turnId) {
             currentCustomerTurn.status = 'completed';
+            currentCustomerTurn.statusNameArabic = 'مكتمل';
+            currentCustomerTurn.completedAt = new Date().toISOString();
             localStorage.setItem('currentCustomerTurn', JSON.stringify(currentCustomerTurn));
             showCustomerTurnStatus(currentCustomerTurn);
             showToast('تم إكمال دورك! شكراً لك', 'success');
@@ -474,9 +484,9 @@ async function completeTurn(turnId) {
         loadTurns();
         loadCustomers();
         
-        showToast(response.message, 'success');
+        showToast(response.message || 'تم إكمال الدور بنجاح', 'success');
     } catch (error) {
-        showToast(error.message, 'error');
+        showToast(error.message || 'حدث خطأ أثناء إكمال الدور', 'error');
     }
 }
 
@@ -489,7 +499,7 @@ async function callNow(customerName, mobileNumber, turnId) {
             });
             
             // Initiate the phone call
-            const phoneNumber = mobileNumber.startsWith('+') ? mobileNumber : `+966${mobileNumber.replace(/^0/, '')}`;
+            const phoneNumber = mobileNumber.startsWith('+') ? mobileNumber : `+20${mobileNumber.replace(/^0/, '')}`;
             window.location.href = `tel:${phoneNumber}`;
             
             showToast(response.message, 'success');
@@ -510,6 +520,8 @@ async function cancelTurnAdmin(turnId, customerName) {
             if (currentCustomerTurn && currentCustomerTurn.id === turnId) {
                 currentCustomerTurn.status = 'cancelled';
                 currentCustomerTurn.statusNameArabic = 'ملغي';
+                currentCustomerTurn.cancelledAt = new Date().toISOString();
+                currentCustomerTurn.cancelledBy = 'admin';
                 localStorage.setItem('currentCustomerTurn', JSON.stringify(currentCustomerTurn));
                 showCustomerTurnStatus(currentCustomerTurn);
             }
@@ -518,9 +530,9 @@ async function cancelTurnAdmin(turnId, customerName) {
             loadTurns();
             loadCustomers();
             
-            showToast(response.message, 'success');
+            showToast(response.message || 'تم إلغاء الدور بنجاح', 'success');
         } catch (error) {
-            showToast(error.message, 'error');
+            showToast(error.message || 'حدث خطأ أثناء إلغاء الدور', 'error');
         }
     }
 }
